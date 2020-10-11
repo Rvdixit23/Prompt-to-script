@@ -1,19 +1,15 @@
+#!/usr/bin/env bash
 # The standard usage for the script
-usage() { echo "Usage: $0 [-l <number of lines>] [-c <valid command>] [-f <filename>]" 1>&2; exit 1; }
-
-LINES=
-COMMAND=
+usage() { echo "Usage: $0 [-l <number of lines>] [-c <valid command>] [-f <filename>]" 1>&2;}
 
 while getopts ":l:c:f:" o; do
     case "${o}" in
         l)
             LINES=${OPTARG}
-            if ! [[ "$LINES" -eq "$LINES" ]] ; then
-                # Specifying usage if the value is not a number
-                # Numeric value evaluations of non number gives false
+            if ! [[ "$LINES" =~ ^[0-9]+$ ]] ; then
                 usage
+                exit 1
             fi
-            # Assigning Line and Command Priorities
             if [[ -z "${COMMAND}" ]] ; then
                 LINE_PRIO=1
             else
@@ -22,47 +18,44 @@ while getopts ":l:c:f:" o; do
             ;;
         c)
             COMMAND=${OPTARG}
+            # Checking validity of COMMAND
+			if [[ -n "${COMMAND}" ]] ; then
+    			command -v "$COMMAND" &> /dev/null
+    			if [[ $? -eq "1" ]] ; then
+      				echo "$0: $COMMAND: command not found"
+       				usage
+       				exit 0
+    			fi
+			fi
             ;;
         f)
             FILENAME=${OPTARG}
+            
             ;;
         *)
             usage
+            exit 1
             ;;
     esac
 done
-shift $((OPTIND-1))
-
-# Checking validity of COMMAND
-# @todo Suppress output of which
-if ! [[ -z "${COMMAND}" ]] ; then
-    which ${COMMAND}
-    if [[ $? -eq "1" ]] ; then
-        echo "$0: ${COMMAND}: command not found"
-        usage
-    fi
+if [[ -z "$FILENAME" ]] ; then
+	usage
+	exit 1
 fi
-
-echo "Number of Lines = ${LINES}"
-echo "Command = ${COMMAND}"
-
-
+if [[ -f "$FILENAME.sh" ]] ; then
+	echo "File Already exists"
+    exit 1
+fi
+echo "Number of Lines = $LINES"
+echo "Command = $COMMAND"
+echo "File = $FILENAME"
 # Enable History in a non interactive shell
 HISTFILE=~/.bash_history
 set -o history
-hist=`history|tail -n ${LINES}`
-echo $hist
-
+echo '#!/usr/bin/env bash' > "$FILENAME.sh"
+history | tail -n "$LINES" >> "$FILENAME.sh";
+chmod u+x "$FILENAME.sh"
 # @todo
 # String Processing
-# Check if file already exists
-# Create script
 # Exclude Script lines 
 # Command and Line number priorities
-
-# Creating the new script from history
-# echo shabang line and x number of LINES of history to new script
-# echo \#\!\/bin\/bash > $FILENAME.sh; history | tail -n $LINES >> $FILENAME.sh;
-# chmod u+x $FILENAME.sh;
-
-
